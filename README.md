@@ -67,12 +67,13 @@ Venture-ZeroPage.asm | Combines LIGHT with the zero page data
 Venture-Game.asm | Creates the actual game
 Venture-Extra.asm | Creates the file loaded into 6530 RAM
 Venture-Scoring.asm | Creates the scoring program
+Venture-ZeroPage-Full.asm | Zero page data for the full version of the program
 Venture-Full.asm | Creates a combimed program for a KIM with extended memory (or the KIM-1 clone)
 
 These files are necessary as the individual source files refer to locations and subroutines located in the other parts.  They can only be assembled together.  Each of the above files contains a directive causing only the relavent part to be output, enabling the separate program files to be created.
 
 For the `Venture-Full` version, the game starts at `$0200` instead of `$0100` and avoids using any locations in page 1 (the 6502 stack).  You can stop the program to view your score at any time.  Press `ST` to stop the program and change to address `$0600` and `GO`.  Press `ST` again and rejoin the game from `$0200`.
 
-The `Venture-Full` file does not include the zero page data so that must be loaded separately.  This is partly to avoid trying to load data through stack locations (which could mess up the loading process) and also to make it easier to keep copies of the zero page data in order to save the state of a game.
+The `Venture-Full` file does not include the zero page data so that must be loaded separately (from `Venture-ZeroPage-Full` which has the correct location of the message table for the full program).  This is partly to avoid trying to load data through stack locations (which could mess up the loading process) and also to make it easier to keep copies of the zero page data in order to save the state of a game.
 
 **NOTE**: The `Venture-Full` version is a work in progress - try it at your own risk!!
