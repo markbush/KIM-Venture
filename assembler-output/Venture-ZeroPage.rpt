@@ -1,0 +1,420 @@
+              RAM     = $0000
+0000        .OUTPUT RAM,ENDPRG
+              ** = RAM
+
+              TIMER  = $1706
+              PADD   = $1741
+              KEYS   = $1F3D
+              CONVD  = $1F48
+              GETKEY = $1F6A
+              DIGCOD = $1FE7
+
+              ; KIM-VENTURE © Copyright R.C.Leedom 1979
+              ;
+              ; LIGHT Subroutine. Lights KIM 7-segment dis-
+              ;      plays with character-codes contained
+              ;      in table WINDO.  On return, key from
+              ;      keyboard is in A-reg (else A-reg=$15).
+              ;      Y-reg is preserved.
+0000 84 EF    LIGHT:  STY YSAV     ; Save Y-register
+0002 A0 00            LDY #0
+0004 A9 7F            LDA #$7F     ; Set directional
+0006 8D 41 17         STA PADD     ;    registers.
+0009 A2 09            LDX #9       ; Start with leftmost
+000B 84 FC    LITELP: STY TEMP     ;    character.
+000D B9 F0 00         LDA WINDO,Y  ; Get char to be shown.
+0010 20 4E 1F         JSR CONVD+6  ; Use KIM monitor subr.
+0013 C8               INY          ; Next char on right ...
+0014 C0 06            CPY #6       ; Done all six yet?
+0016 90 F3            BCC LITELP   ; Not yet. Continue.
+              ;
+0018 20 3D 1F KBG:    JSR KEYS     ; Before return, sample
+001B 20 6A 1F         JSR GETKEY   ;    the KIM keyboard.
+001E A4 EF            LDY YSAV     ; Restore Y-register.
+0020 60               RTS
+              ** = $0021
+              ;
+              ; Character look-up table.  Frequently-used
+              ;      characters stored as 4-bit pointers
+              ;      into part of this table (FUTBL). In-
+              ;      frequently-used characters stored as
+              ;      8-bit pointers into the other part
+              ;      (IUTBL).  Note that the last two en-
+              ;      tries are variables, used for special
+              ;      program-controllable characters.
+              ;
+              ;                  Index Character
+0021 77       FUTBL:  .BYTE $77 ;   2     A
+0022 39               .BYTE $39 ;   3     C
+0023 5E               .BYTE $5E ;   4     D
+0024 79               .BYTE $79 ;   5     E
+0025 76               .BYTE $76 ;   6     H
+0026 06               .BYTE $06 ;   7     I
+0027 38               .BYTE $38 ;   8     L
+0028 54               .BYTE $54 ;   9     N
+0029 5C               .BYTE $5C ;   A     O
+002A 50               .BYTE $50 ;   B     R
+002B 6D               .BYTE $6D ;   C     S
+002C 78               .BYTE $78 ;   D     T
+002D 1C               .BYTE $1C ;   E     U
+002E 00               .BYTE $00 ;   F     (blank)
+002F 40       IUTBL:  .BYTE $40 ;  10     - (dash)
+0030 7C               .BYTE $7C ;  11     B
+0031 71               .BYTE $71 ;  12     F
+0032 3D               .BYTE $3D ;  13     G
+              ;                  (continuation of IUTBL)
+0033 1E               .BYTE $1E ;  14     J
+0034 37               .BYTE $37 ;  15     M
+0035 73               .BYTE $73 ;  16     P
+0036 3E               .BYTE $3E ;  17     W
+0037 6E               .BYTE $6E ;  18     Y
+0038 53               .BYTE $53 ;  19     ?
+0039 08               .BYTE $08 ;  1A     . (period)
+003A 5B               .BYTE $5B ;  1B     2
+003B 00       SGNPST: .BYTE $00 ;  1C     Variable (signpost)
+003C 00       MBCODE: .BYTE $00 ;  1D     Variable (? or magic
+              ;                                     button)
+              ;
+              ; Program variables (except for a very few
+              ;      located elsewhere)
+003D 00       NMBUTS: .BYTE $00 ; No. of magic button uses
+003E 00       BURDEN: .BYTE $00 ; Bit #n set if carrying object #n.
+003F 00       DLOBAD: .BYTE $00 ; Abs address of obj to be deleted.
+0040 FF       DRAGON: .BYTE $FF ; FF=hungry; 0=dead; 1=full.
+0041 EC       EGOLAD: .BYTE $EC ; Current address of EGO file.
+0042 00       LOCAD:  .BYTE $00 ; Addr of current location file.
+0043 00       LINTAX: .BYTE $00 ; Pointer: 0=EGOLAD; 1=LOCAD
+0044 00       LOBJAD: .BYTE $00 ; Addr of last obj in file, or
+                               ;      of object of interest.
+0045 0B       LOCNUM: .BYTE $0B ; Number of current location.
+0046 FF       MBUT:   .BYTE $FF ; Current magic button (0 - F valid).
+0047 00       NOBCRY: .BYTE $00 ; No. of objects carried (0 - 4).
+0048 00       NOBS:   .BYTE $00 ; No. of objs to be displayed (0 - 7).
+0049 00       OBJ:    .BYTE $00 ; Object identifier (0 - 7).
+004A 00       POINTR: .BYTE $00 ; ADL of message
+004B 03               .BYTE $03 ; ADH of message (Constant!)
+004C 00       MOVES:  .BYTE $00 ; L.S. Half of number of moves.
+              ;
+              ; Program constants
+              ;
+004D 02       OBJMSK: .BYTE %00000010 ; (1) Bird    When obj is
+004E 04               .BYTE %00000100 ; (2) Rope   picked up (or is
+004F 08               .BYTE %00001000 ; (3) Rod    dropped), the
+0050 10               .BYTE %00010000 ; (4) File   proper bit is
+0051 20               .BYTE %00100000 ; (5) Cage   ORed into (or is
+0052 40               .BYTE %01000000 ; (6) Pearls NANDed out of)
+0053 80               .BYTE %10000000 ; (7) Gold   BURDEN.
+              ;
+              ; Message addresses.  These are the ADL's of
+              ;      the messages, all of which are assumed
+              ;      to reside in page 3 (see POINTR+1).
+              ;      Order of this table is paramount!
+              ;      There is a variable thrown in here to
+              ;      separate ADOPGR and ADBRDG ...
+0054 34       ADOPGR: .BYTE $34 ; Open Grate
+0055 00       SCDU:   .BYTE $00 ; -1,0,1,2 : Browse, Carry,
+                               ;            Drop, Use
+0056 2B       ADBRDG: .BYTE $2B ; Bridge Across Gully
+0057 BE       OBMSAD: .BYTE $BE ; (0) Dragon
+0058 DC               .BYTE $DC ; (1) Bird
+0059 43               .BYTE $43 ; (2) Rope
+005A E4               .BYTE $E4 ; (3) Rod
+005B 25               .BYTE $25 ; (4) File
+005C 22               .BYTE $22 ; (5) Cage
+005D 1C               .BYTE $1C ; (6) Pearls
+005E 46               .BYTE $46 ; (7) Gold
+005F 8C       UINMAD: .BYTE $8C ; You Are In
+0060 89               .BYTE $89 ; You Are At
+0061 B5               .BYTE $B5 ; I See -
+0062 E7       CYMSAD: .BYTE $E7 ; Carry -
+0063 D7               .BYTE $D7 ; Drop -
+0064 AE               .BYTE $AE ; Use -
+0065 06       LNAMAD: .BYTE $06 ; Cellar         0
+0066 09               .BYTE $09 ; Purple Oracle  1
+0067 11               .BYTE $11 ; Red Room       2
+0068 18       ADSSM:  .BYTE $18 ; Stone Steps    3
+0069 D3               .BYTE $D3 ; Blue Den       4
+006A 3C       ADGRM:  .BYTE $3C ; Steel Grate    5
+006B 4F               .BYTE $4F ; Hole           6
+006C 38       ADGYM:  .BYTE $38 ; Gully          7
+006D 7B       ADRHM:  .BYTE $7B ; Royal Hall     8
+006E AB               .BYTE $AB ; House          9
+006F DB               .BYTE $DB ; Bird Room      A
+0070 70               .BYTE $70 ; Stream         B
+0071 52       ADTSM:  .BYTE $52 ; Tight Shaft    C
+0072 93               .BYTE $93 ; N. Pit         D
+0073 EF               .BYTE $EF ; Grotto         E
+0074 6A               .BYTE $6A ; Oyster-bed     F
+0075 28               .BYTE $28 ; Chute         10
+0076 73               .BYTE $73 ; E. Pit        11
+0077 9B               .BYTE $9B ; Attic         12
+0078 EB               .BYTE $EB ; S. Pit        13
+0079 56               .BYTE $56 ; Tunnel        14
+007A 5D               .BYTE $5D ; 2-Inch Slit   15
+007B 82               .BYTE $82 ; Glen          16
+007C F3               .BYTE $F3 ; Forest        17
+              ;                        CAVE MAP
+              ; Format for file for each location in caves is as follows:
+              ;
+              ;  Word #                           Contents
+              ;    0      Bit 7 = 1, bit 6 = 0. Bit 5 = 1 if location has
+              ;             been visited during the game.  Bits 4 - 0
+              ;             contain the location number of this file.
+              ;
+              ;    1      Bit 7 = 0.  Bit 6 = 1 if magic button works
+              ;              in this location.  bits 5,4,3,2,1,0 = 1 if
+              ;              you can leave this location in the D,U,W,S,
+              ;              E,N direction, respectively.  This word is
+              ;              used as the "signpost" in the Cue message.
+              ;
+              ; next (up  Bit 7 = 0, bit 6 = 1.  Bits 5 - 0 specify a
+              ; to) six      location to which you may move from this
+              ;  words       location.
+              ;              The first of these words specifies the
+              ;              destination for the lowest-numbered bit
+              ;              which is set in word 1; the second specifies
+              ;              the destination for the next-lowest bit set
+              ;              in word 1, etc.
+              ;              Therefore, there must be one of these words
+              ;              for each of the first six bits (5 - 0) set
+              ;              in word 1 of this file.
+              ;
+              ; next (up  Bit 7 = 0, bit 6 = 0.  Bits 5 - 0 specify the
+              ; to) eight    object number of an object at this location.
+              ;  words       There may be as many as eight of these words,
+              ;              or there may be none at all.
+              ;
+              RYHALL = $08
+007D 88       SOCM:   .BYTE $88 ; LOCNUM = 8            Royal Hall
+007E 3F               .BYTE $3F ; Directions: N,E,S,W,U,D
+007F 4E               .BYTE $4E ; N to Grotto (E)
+0080 43               .BYTE $43 ; E to Stone Steps (3)
+0081 4C               .BYTE $4C ; S to Tight Shaft  (C)
+0082 4D               .BYTE $4D ; W to N. Pit (D)
+0083 52               .BYTE $52 ; U to Attic (12)
+0084 50               .BYTE $50 ; D to Chute (10)
+0085 00       DRAGAD: .BYTE $00 ; Dragon
+              ;
+0086 94               .BYTE $94 ; LOCNUM = 14           Tunnel
+0087 11               .BYTE $11 ; Directions: N,U
+0088 4A               .BYTE $4A ; N to Bird Room (A)
+0089 45               .BYTE $45 ; U to Steel Grate (5)
+008A 03               .BYTE $03 ; Rod
+              ;
+008B 95               .BYTE $95 ; LOCNUM = 15           2-Inch Slit
+008C 05               .BYTE $05 ; Directions: N,S
+008D 4B               .BYTE $4B ; N to Stream (B)
+008E 45               .BYTE $45 ; S to Steel Grate (5)
+              ;
+008F 96               .BYTE $96 ; LOCNUM = 16           Glen
+0090 02               .BYTE $02 ; Directions: E
+0091 4B               .BYTE $4B ; E to Stream (B)
+              ;
+0092 8F               .BYTE $8F ; LOCNUM = F            Oyster-Bed
+0093 10               .BYTE $10 ; Directions: U
+0094 44               .BYTE $44 ; U to Blue Den (4)
+0095 06               .BYTE $06 ; Pearls
+              ;
+0096 80               .BYTE $80 ; LOCNUM = 0            Cellar
+0097 50               .BYTE $50 ; Directions: U, Magic
+                                ;  (Magic to Stone Steps)
+0098 49               .BYTE $49 ; U to (at) House (9)
+0099 05               .BYTE $05 ; Cage
+009A 02               .BYTE $02 ; Rope
+009B 04               .BYTE $04 ; File
+              ;
+009C 81               .BYTE $81 ; LOCNUM = 1            Purple Oracle
+009D 0A               .BYTE $0A ; Directions: W,E
+009E 4A               .BYTE $4A ; E to Bird Room (A)
+009F 43               .BYTE $43 ; W to Stone Steps (3)
+              ;
+00A0 82               .BYTE $82 ; LOCNUM = 2            Red Room
+00A1 52               .BYTE $52 ; Directions: E,U,Magic
+                                ;  (Magic to Cellar)
+00A2 47               .BYTE $47 ; E to Gully (7)
+00A3 52               .BYTE $52 ; U to Attic (12)
+00A4 07               .BYTE $07 ; Gold
+              ;
+00A5 83               .BYTE $83 ; LOCNUM = 3            Stone Steps
+00A6 70               .BYTE $70 ; Directions: U,D,Magic
+                                ;  (Magic to Cellar)
+00A7 41               .BYTE $41 ; U to Purple Oracle (1)
+00A8 48               .BYTE $48 ; D to Royal Hall (8)
+              ;
+00A9 84               .BYTE $84 ; LOCNUM = 4            Blue Den
+00AA 61               .BYTE $61 ; Directions: N,D,Magic
+                                ;  (Magic to Cellar)
+00AB 46               .BYTE $46 ; N to Hole (6)
+00AC 4F               .BYTE $4F ; D to Oyster-Bed (F)
+              ;
+              STGRAT = $05
+00AD 85               .BYTE $85 ; LOCNUM = 5            Steel Grate
+00AE 21               .BYTE $21 ; Directions: N,D
+00AF 55               .BYTE $55 ; N to 2-Inch Slit (15)
+00B0 54               .BYTE $54 ; D to Tunnel (14)
+              ;
+              HOLE = $06
+00B1 86               .BYTE $86 ; LOCNUM = 6            Hole
+00B2 00               .BYTE $00 ; Directions: None!
+              ;
+              GULLY = $07
+00B3 87               .BYTE $87 ; LOCNUM = 7            Gully
+00B4 0C               .BYTE $0C ; Directions: S,W
+00B5 4E               .BYTE $4E ; S to Grotto (E)
+00B6 42               .BYTE $42 ; W to Red Room (2)
+              ;
+00B7 89               .BYTE $89 ; LOCNUM = 9            House
+00B8 2E               .BYTE $2E ; Directions: E,S,W,D
+00B9 57               .BYTE $57 ; E to Forest (17)
+00BA 4B               .BYTE $4B ; S to Stream (B)
+00BB 56               .BYTE $56 ; W to Glen (16)
+00BC 40               .BYTE $40 ; D to Cellar (0)
+              ;
+00BD 8A               .BYTE $8A ; LOCNUM = A            Bird Room
+00BE 0C               .BYTE $0C ; Directions: S,W
+00BF 54               .BYTE $54 ; S to Tunnel (14)
+00C0 41               .BYTE $41 ; W to Purple Oracle (1)
+00C1 01               .BYTE $01 ; Bird
+              ;
+00C2 8B               .BYTE $8B ; LOCNUM = B            Stream
+00C3 0F               .BYTE $0F ; Directions: N,E,S,W
+00C4 49               .BYTE $49 ; N to House (9)
+00C5 57               .BYTE $57 ; E to Forest (17)
+00C6 55               .BYTE $55 ; S to 2-Inch Slit (15)
+00C7 56               .BYTE $56 ; W to Glen (16)
+              ;
+00C8 8C               .BYTE $8C ; LOCNUM = C            Tight Shaft
+00C9 30               .BYTE $30 ; Directions: U,D
+00CA 52               .BYTE $52 ; U to Attic (12)
+00CB 53               .BYTE $53 ; D to S. Pit (13)
+              ;
+              NPIT = $0D
+00CC 8D               .BYTE $8D ; LOCNUM = D            N. Pit
+00CD 2A               .BYTE $2A ; Directions: E,W,D
+00CE 51               .BYTE $51 ; E to E. Pit (11)
+00CF 50               .BYTE $50 ; W to Chute (10)
+00D0 46               .BYTE $46 ; D to Hole (6)
+              ;
+00D1 8E               .BYTE $8E ; LOCNUM = E            Grotto
+00D2 0D               .BYTE $0D ; Directions: N,S,W
+00D3 43               .BYTE $43 ; N to Stone Steps (3)
+00D4 4D               .BYTE $4D ; S to N. Pit (D)
+00D5 47               .BYTE $47 ; W to Gully (7)
+              ;
+00D6 97               .BYTE $97 ; LOCNUM = 17           Forest
+00D7 09               .BYTE $09 ; Directions: N,W
+00D8 49               .BYTE $49 ; N to House (9)
+00D9 4B               .BYTE $4B ; W to Stream (B)
+              ;
+00DA 90               .BYTE $90 ; LOCNUM = 10           Chute
+00DB 20               .BYTE $20 ; Directions: D
+00DC 4C               .BYTE $4C ; D to Tight Shaft (C)
+              ;
+00DD 91               .BYTE $91 ; LOCNUM = 11           E. Pit
+00DE 35               .BYTE $35 ; Directions: N,S,U,D
+00DF 4D               .BYTE $4D ; N to N. Pit (D)
+00E0 53               .BYTE $53 ; S to S. Pit (13)
+00E1 4C               .BYTE $4C ; U to Tight Shaft (C)
+00E2 46               .BYTE $46 ; D to Hole (6)
+              ;
+00E3 92               .BYTE $92 ; LOCNUM = 12           Attic
+00E4 20               .BYTE $20 ; Directions: D
+00E5 48               .BYTE $48 ; D to Royal Hall (8)
+              ;
+00E6 93               .BYTE $93 ; LOCNUM = 13           S. Pit
+00E7 33               .BYTE $33 ; Directions: N,E,U,D
+00E8 4D               .BYTE $4D ; N to N. Pit (D)
+00E9 51               .BYTE $51 ; E to E. Pit (11)
+00EA 52               .BYTE $52 ; U to Attic (12)
+00EB 44               .BYTE $44 ; D to Blue Den (4)
+              ;
+              ; EGO File ("File of the self")
+              ;       Behaves like any other location, except that the
+              ;       "Directions" word is used for the Most Significant
+              ;       Half of the double precision MOVES counter.  This
+              ;       file is initially empty; objects picked up by the
+              ;       adventurer are placed here until they are dropped.
+              ;
+00EC 9F               .BYTE $9F ; LOCNUM = 1F           EGO File
+00ED 00               .BYTE $00 ; M.S.H. of MOVES
+00EE 9F       EOCM:   .BYTE $9F ; End Of Cave Map Flag (a constant)
+              ;
+              ; KIM monitor locations used by KIM-VENTURE
+              ;
+00EF 00       YSAV:   .BYTE $00 ; Used by LIGHT S/R to save Y-Reg.
+                                ;     This location is destroyed each
+                                ;     time ADDOBJ is called -- EOCM
+                                ;     gets written here.
+00F0 00 00 00 00 00 00 00       WINDO:  .BYTE $00,$00,$00,$00,$00,$00,$00
+                                ; Display window for LIGHT S/R. Really
+                                ;     only need six, but for the fact
+                                ;     that FILMSG keeps unpacking msg's
+                                ;     till it ends on a whole byte --
+                                ;     thus clobbering 1 or 2 extras...
+00F7 00       DIR:    .BYTE $00 ; Direction moved. 0=N,....,5=D.
+              ;
+              ** = $00FC
+00FC 00       TEMP:   .BYTE $00 ; Used by LIGHT and monitor together.
+00FD 00       LCTR:   .BYTE $00 ; Letter-counter for FILMSG.
+00FE 00       DISNXM: .BYTE $00 ; Display-next-message flag.  If nonzero,
+                                ;     FILMSG will add DISNXM to ADL of
+                                ;     message (POINTR) and start over.
+
+              ENDPRG = EOCM
+ADBRDG   $  56
+ADGRM    $  6A
+ADGYM    $  6C
+ADOPGR   $  54
+ADRHM    $  6D
+ADSSM    $  68
+ADTSM    $  71
+BURDEN   $  3E
+CONVD    $1F48
+CYMSAD   $  62
+DIGCOD   $1FE7
+DIR      $  F7
+DISNXM   $  FE
+DLOBAD   $  3F
+DRAGAD   $  85
+DRAGON   $  40
+EGOLAD   $  41
+ENDPRG   $  EE
+EOCM     $  EE
+FUTBL    $  21
+GETKEY   $1F6A
+GULLY    $   7
+HOLE     $   6
+IUTBL    $  2F
+KBG      $  18
+KEYS     $1F3D
+LCTR     $  FD
+LIGHT    $   0
+LINTAX   $  43
+LITELP   $   B
+LNAMAD   $  65
+LOBJAD   $  44
+LOCAD    $  42
+LOCNUM   $  45
+MBCODE   $  3C
+MBUT     $  46
+MOVES    $  4C
+NMBUTS   $  3D
+NOBCRY   $  47
+NOBS     $  48
+NPIT     $   D
+OBJ      $  49
+OBJMSK   $  4D
+OBMSAD   $  57
+PADD     $1741
+POINTR   $  4A
+RAM      $   0
+RYHALL   $   8
+SCDU     $  55
+SGNPST   $  3B
+SOCM     $  7D
+STGRAT   $   5
+TEMP     $  FC
+TIMER    $1706
+UINMAD   $  5F
+WINDO    $  F0
+YSAV     $  EF
