@@ -14,6 +14,15 @@ When you are finished, load `Venture-Scoring` and run from `$0100` to see how yo
 
 Note that the scoring program overwrites some page zero locations.  If you want to be able to go back to your game after seeing your score, then you will need to save page zero first, then run the scoring program, then load your saved file and also `Venture-Game` again and restart at `$0100`.
 
+The original tape IDs of these files are:
+
+ID | File
+---|-----
+A1 | Venture-ZeroPage
+A2 | Venture-Game
+A3 | Venture-Extra
+06 | Venture-Scoring
+
 ## Instructions
 
 Included here are:
