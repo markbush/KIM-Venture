@@ -1,6 +1,3 @@
-              RAM     = $0000
-0000        .OUTPUT RAM,ENDPRG
-
               ; Start locations for page 1 and page 2
               ; to avoid use of top of stack.
               ; Page 2 must be a page boundary to ensure
@@ -12,12 +9,8 @@
               PART4 = $0600
               PART5 = $0700
 
-              ; These zero page locations are overwritten
-              ;    by the scoring program.
-              MOVMSH = OBMSAD
-              BCDLSH = OBMSAD+1
-              BCDMSH = OBMSAD+2
-              OBCELR = OBMSAD+3
+              RAM     = PART1
+0000        .OUTPUT RAM,ENDPRG
 
               TIMER  = $1706
               PADD   = $1741
@@ -984,17 +977,24 @@
               ;  are left spare for
               ;  user expansion....
               ; Put zero page restore at end of Extra code
-0564 A9 BE    INITZP: LDA #$BE
-0566 85 57            STA OBMSAD
-0568 A9 DC            LDA #$DC
-056A 85 58            STA OBMSAD+1
-056C A9 43            LDA #$43
-056E 85 59            STA OBMSAD+2
-0570 A9 E4            LDA #$E4
-0572 85 5A            STA OBMSAD+3
+0564 A9 89    INITZP: LDA #$89
+0566 85 60            STA UINMAD+1
+0568 A9 B5            LDA #$B5
+056A 85 61            STA UINMAD+2
+056C A9 E7            LDA #$E7
+056E 85 62            STA UINMAD+3
+0570 A9 D7            LDA #$D7
+0572 85 63            STA UINMAD+4
 0574 D8               CLD            ; Original start code
 0575 A5 45            LDA LOCNUM     ; Start at preloaded loc.
 0577 60               RTS
+
+              ; These zero page locations are overwritten
+              ;    by the scoring program.
+              MOVMSH = UINMAD+1
+              BCDLSH = UINMAD+2
+              BCDMSH = UINMAD+3
+              OBCELR = UINMAD+4
 
               ; K - V SCORE   © Copyright R.C.Leedom 1979
               ;      The K-V SCORE program is to be loaded
@@ -1056,31 +1056,31 @@
 0633 18       MVCONV: CLC
 0634 F8               SED            ; Set decimal mode.
 0635 A9 00            LDA #0         ; Clear Binary Coded
-0637 85 58            STA BCDLSH     ;   Decimal, Least and
-0639 85 59            STA BCDMSH     ;   Most Signif. Halves.
+0637 85 61            STA BCDLSH     ;   Decimal, Least and
+0639 85 62            STA BCDMSH     ;   Most Signif. Halves.
 063B A5 4C            LDA MOVES      ; Is LSH = 0?
-063D F0 16            BEQ MSADD      ; Yes, go add up MSH.
+063D F0 10            BEQ MSADD      ; Yes, go add up MSH.
                       ;
-063F A5 58    LSADD:  LDA BCDLSH     ; For LSH, a double
+063F A5 61    LSADD:  LDA BCDLSH     ; For LSH, a double
 0641 69 01            ADC #1         ;   precision add
-0643 85 58            STA BCDLSH     ;   of one count
-0645 A5 59            LDA BCDMSH     ;   for each unit
+0643 85 61            STA BCDLSH     ;   of one count
+0645 A5 62            LDA BCDMSH     ;   for each unit
 0647 69 00            ADC #0         ;   of the LSH of
-0649 85 59            STA BCDMSH     ;   the move counter.
+0649 85 62            STA BCDMSH     ;   the move counter.
 064B C6 4C            DEC MOVES
 064D D0 F0            BNE LSADD
                       ;
 064F A6 41    MSADD:  LDX EGOLAD     ; Get MSH of the move
 0651 B5 01            LDA 1,X        ;   counter, save it,
-0653 85 57            STA MOVMSH     ;   and if zero, we
-0655 F0 1B            BEQ DSPFIL     ;   are done...
+0653 85 60            STA MOVMSH     ;   and if zero, we
+0655 F0 10            BEQ DSPFIL     ;   are done...
                       ;
-0657 A5 58    MSAD1:  LDA BCDLSH     ; For MSH, a double
+0657 A5 61    MSAD1:  LDA BCDLSH     ; For MSH, a double
 0659 69 56            ADC #$56       ;   precision add of
-065B 85 58            STA BCDLSH     ;   256 counts
-065D A5 59            LDA BCDMSH     ;   for each unit
+065B 85 61            STA BCDLSH     ;   256 counts
+065D A5 62            LDA BCDMSH     ;   for each unit
 065F 69 02            ADC #2         ;   of the MSH of
-0661 85 59            STA BCDMSH     ;   the move counter.
+0661 85 62            STA BCDMSH     ;   the move counter.
 0663 D6 01            DEC 1,X
 0665 D0 F0            BNE MSAD1
               ;
@@ -1089,12 +1089,12 @@
               ;      to score, and blanks (up to) two leading
               ;      zeroes.
 0667 D8       DSPFIL: CLD
-0668 A5 58            LDA BCDLSH     ; For LSH of score,
+0668 A5 61            LDA BCDLSH     ; For LSH of score,
 066A 29 0F            AND #$F        ;   get lower digit and
 066C AA               TAX            ;   corresponding segment
 066D BD E7 1F         LDA DIGCOD,X   ;   code from monitor, and
 0670 85 F5            STA WINDO+5    ;   put in display window.
-0672 A5 58            LDA BCDLSH     ; Similarly, get upper
+0672 A5 61            LDA BCDLSH     ; Similarly, get upper
 0674 4A               LSR            ;   digit of LSH of
 0675 4A               LSR
 0676 4A               LSR
@@ -1102,25 +1102,25 @@
 0678 AA               TAX            ;   segment code from
 0679 BD E7 1F         LDA DIGCOD,X   ;   KIM monitor, and put
 067C 85 F4            STA WINDO+4    ;   in display window.
-067E A5 59            LDA BCDMSH     ; For MSH of score,
+067E A5 62            LDA BCDMSH     ; For MSH of score,
 0680 4A               LSR            ;   first get upper digit.
 0681 4A               LSR
 0682 4A               LSR
 0683 4A               LSR
 0684 A8               TAY            ; Is it zero?
-0685 F0 12            BEQ LZ1BNK     ; Yes, blank it.
+0685 F0 04            BEQ LZ1BNK     ; Yes, blank it.
                       ;
 0687 AA               TAX            ; Use nonzero upper digit
 0688 BD E7 1F         LDA DIGCOD,X   ;   to get segment code.
 068B 85 F2    LZ1BNK: STA WINDO+2    ; Put MS digit in window.
-068D A5 59            LDA BCDMSH     ; Get next most signif.
+068D A5 62            LDA BCDMSH     ; Get next most signif.
 068F 29 0F            AND #$F        ;   digit and
 0691 AA               TAX            ;   save it.
 0692 98               TYA            ; Was MS digit zero?
-0693 D0 12            BNE NOBNK2     ; No, so don't blank
+0693 D0 03            BNE NOBNK2     ; No, so don't blank
                       ;                  this digit.
 0695 8A               TXA            ; Yes, is this one zero?
-0696 F0 12            BEQ LZBNK2     ; Yes -- both zero!  Go
+0696 F0 03            BEQ LZBNK2     ; Yes -- both zero!  Go
                       ;                  blank this one too.
 0698 BD E7 1F NOBNK2: LDA DIGCOD,X   ; Get code for 2nd MSD.
 069B 85 F3    LZBNK2: STA WINDO+3    ; Fill the remaining
@@ -1132,31 +1132,31 @@
 069D A2 71    CLASS:  LDX #$71       ; Class F if
 069F A5 45            LDA LOCNUM
 06A1 C9 06            CMP #6         ;    in the hole
-06A3 D0 15            BNE CELSCH
+06A3 D0 06            BNE CELSCH
 06A5 A5 3E            LDA BURDEN
 06A7 29 04            AND #4         ;    without the rope.
-06A9 F0 3A            BEQ WSLNK      ;    Go show "F".
+06A9 F0 28            BEQ WSLNK      ;    Go show "F".
                       ;
 06AB A9 00    CELSCH: LDA #0         ; Cellar search to see
-06AD 85 5A            STA OBCELR     ;    if any treasures
+06AD 85 63            STA OBCELR     ;    if any treasures
 06AF 20 03 06         JSR LOCSCH     ;    have been left
 06B2 A0 01            LDY #1         ;    here...
 06B4 20 00 05         JSR LOBSCH
 06B7 84 48            STY NOBS       ; Anything here?
-06B9 F0 27            BEQ CVLINK     ; No, check cave visits.
+06B9 F0 15            BEQ CVLINK     ; No, check cave visits.
 06BB B4 00    OBCSET: LDY 0,X        ; Yes, so set up
-06BD A5 5A            LDA OBCELR     ;    OBCELR which will
+06BD A5 63            LDA OBCELR     ;    OBCELR which will
 06BF 19 4C 00         ORA OBJMSK-1,Y ;    have a bit set for
-06C2 85 5A            STA OBCELR     ;    each object left
+06C2 85 63            STA OBCELR     ;    each object left
 06C4 CA               DEX            ;    in the cellar.
 06C5 C6 48            DEC NOBS
 06C7 D0 F2            BNE OBCSET
 06C9 A2 39            LDX #$39       ; Class C if only one
 06CB 0A               ASL            ;    treasure here.
-06CC 30 1A            BMI PICLNK     ; Pearls. See if Gold too.
-06CE B0 15            BCS WSLNK      ; No Pearls, Gold only.
-06D0 4C 14 07 CVLINK: JMP CAVIS      ; Neither, check cave visits.
-06D3 4C 66 07 WSLNK:  JMP WINSET     ; Go set window with class.
+06CC 30 08            BMI PICLNK     ; Pearls. See if Gold too.
+06CE B0 03            BCS WSLNK      ; No Pearls, Gold only.
+06D0 4C 12 07 CVLINK: JMP CAVIS      ; Neither, check cave visits.
+06D3 4C 64 07 WSLNK:  JMP WINSET     ; Go set window with class.
 06D6 4C 00 07 PICLNK: JMP PIC        ; Continue cellar check.
 
               ; Note that 1D9 - 1FF not used.  Cellar
@@ -1168,20 +1168,20 @@
               ** = PART5
 0700 90 D1    PIC:    BCC WSLNK      ; Pearls only. Class C.
 0702 A2 7C            LDX #$7C       ; Have placed both
-0704 A5 59            LDA BCDMSH     ;    treasures in the cellar,
+0704 A5 62            LDA BCDMSH     ;    treasures in the cellar,
 0706 D0 CB            BNE WSLNK      ;    but unless done in
 0708 A9 40            LDA #$40       ;    less than 41 moves,
-070A C5 58            CMP BCDLSH     ;    this is only
+070A C5 61            CMP BCDLSH     ;    this is only
 070C 90 C5            BCC WSLNK      ;    Class B.
 070E A2 77            LDX #$77       ; Class A for both in
 0710 D0 C1            BNE WSLNK      ;    cellar, moves <= 40!
                       ;
 0712 A9 02    CAVIS:  LDA #2         ; No treasures returned.
 0714 20 16 06         JSR VISCHK     ; Visited Red Room?
-0717 10 1C            BPL DRAGCK     ;    No.
+0717 10 1A            BPL DRAGCK     ;    No.
 0719 A9 0F            LDA #$F
 071B 20 16 06         JSR VISCHK     ; Visited Oyster-Bed?
-071E 10 15            BPL DRAGCK     ;    No.
+071E 10 13            BPL DRAGCK     ;    No.
                       ;
                       ; Have found (but not recovered) both
                       ;     treasures, so at least Class E.
@@ -1190,7 +1190,7 @@
 0720 A0 12            LDY #$12
 0722 98       VISCLP: TYA
 0723 20 16 06         JSR VISCHK     ; Visited this one?
-0726 30 06            BMI NXVCLP     ; Yes, keep checking.
+0726 30 04            BMI NXVCLP     ; Yes, keep checking.
 0728 A2 79            LDX #$79       ; No, missed one, so
 072A D0 A7            BNE WSLNK      ;    show Class E.
                       ;
@@ -1231,11 +1231,11 @@
                       ;     But did he do all the exploring
                       ;     possible with just N,E,S, and W?
 0751 A0 04            LDY #4
-0753 B9 72 07 ABOVLP: LDA VISTBL,Y   ; Visited House, Glen,
+0753 B9 70 07 ABOVLP: LDA VISTBL,Y   ; Visited House, Glen,
 0756 20 16 06         JSR VISCHK     ;   Slit, Forest, Grate?
-0759 30 06            BMI ABVCON
+0759 30 04            BMI ABVCON
 075B A2 3F            LDX #$3F       ; No, missed one --
-075D D0 07            BNE WINSET     ;   show Class O.
+075D D0 05            BNE WINSET     ;   show Class O.
                       ;
 075F 88       ABVCON: DEY            ; Checked all 5 yet?
 0760 10 F1            BPL ABOVLP     ; No, keep checking.
@@ -1266,8 +1266,8 @@ ADSSM    $  68
 ADTSM    $  71
 AOBLP    $ 517
 ASSMAD   $ 48F
-BCDLSH   $  58
-BCDMSH   $  59
+BCDLSH   $  61
+BCDMSH   $  62
 BGNSCR   $ 624
 BURDEN   $  3E
 CAVIS    $ 712
@@ -1343,7 +1343,7 @@ MNLOOP   $ 250
 MNMVLP   $ 248
 MOVER    $ 28B
 MOVES    $  4C
-MOVMSH   $  57
+MOVMSH   $  60
 MSAD1    $ 657
 MSADD    $ 64F
 MSGAML   $ 322
@@ -1363,7 +1363,7 @@ NPIT     $   D
 NXVCLP   $ 72C
 OBCARY   $ 352
 OBCDCK   $ 361
-OBCELR   $  5A
+OBCELR   $  63
 OBCSET   $ 6BB
 OBDELE   $ 37F
 OBDELL   $ 36F
@@ -1392,7 +1392,7 @@ PART5    $ 700
 PIC      $ 700
 PICLNK   $ 6D6
 POINTR   $  4A
-RAM      $   0
+RAM      $ 200
 RYHALL   $   8
 SCDU     $  55
 SCMLP    $ 626

@@ -8,6 +8,7 @@ Included here are both paper tape and HEX format files.  The HEX files can be us
 
 Load the `Venture-ZeroPage`, `Venture-Game`, and `Venture-Extra` files in any order.
 
+
 Start the game by going to address `$0100` and pressing `GO`.
 
 When you are finished, load `Venture-Scoring` and run from `$0100` to see how you did.
@@ -22,6 +23,18 @@ A1 | Venture-ZeroPage
 A2 | Venture-Game
 A3 | Venture-Extra
 06 | Venture-Scoring
+
+### Note for KIM-1 clone users
+
+If you are using the KIM-1 clone, then you will not be able to load the `Venture-Game` or `Venture-Scoring` as HEX files from the SD card system completely because the extended monitor uses the stack.  Load them from the paper tape files instead.  
+
+## Saving a Game
+
+You can save the state of your game by saving a copy of zero page (from `$00` to `$EE`) and making a note of the contents of location `$03BD`.
+
+Return to the game by loading your saved file instead of the original zero page data when you load the program and setting the contents of `$03BD` to the value you noted.
+
+For the full version mentioned below (in an expanded KIM-1), record and restore the contents of `$04BD` instead of `$03BD`.
 
 ## Instructions
 
@@ -59,5 +72,7 @@ Venture-Full.asm | Creates a combimed program for a KIM with extended memory (or
 These files are necessary as the individual source files refer to locations and subroutines located in the other parts.  They can only be assembled together.  Each of the above files contains a directive causing only the relavent part to be output, enabling the separate program files to be created.
 
 For the `Venture-Full` version, the game starts at `$0200` instead of `$0100` and avoids using any locations in page 1 (the 6502 stack).  You can stop the program to view your score at any time.  Press `ST` to stop the program and change to address `$0600` and `GO`.  Press `ST` again and rejoin the game from `$0200`.
+
+The `Venture-Full` file does not include the zero page data so that must be loaded separately.  This is partly to avoid trying to load data through stack locations (which could mess up the loading process) and also to make it easier to keep copies of the zero page data in order to save the state of a game.
 
 **NOTE**: The `Venture-Full` version is a work in progress - try it at your own risk!!

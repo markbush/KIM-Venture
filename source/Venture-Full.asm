@@ -1,6 +1,3 @@
-RAM     = $0000
-.OUTPUT RAM,ENDPRG
-
 ; Start locations for page 1 and page 2
 ; to avoid use of top of stack.
 ; Page 2 must be a page boundary to ensure
@@ -12,12 +9,8 @@ PART3 = $0500
 PART4 = $0600
 PART5 = $0700
 
-; These zero page locations are overwritten
-;    by the scoring program.
-MOVMSH = OBMSAD
-BCDLSH = OBMSAD+1
-BCDMSH = OBMSAD+2
-OBCELR = OBMSAD+3
+RAM     = PART1
+.OUTPUT RAM,ENDPRG
 
 include "KIM-Locations.asm"
 
@@ -40,17 +33,24 @@ include "Game.asm"
 
 include "Extra.asm"
 ; Put zero page restore at end of Extra code
-INITZP: LDA #$BE
-        STA OBMSAD
-        LDA #$DC
-        STA OBMSAD+1
-        LDA #$43
-        STA OBMSAD+2
-        LDA #$E4
-        STA OBMSAD+3
+INITZP: LDA #$89
+        STA UINMAD+1
+        LDA #$B5
+        STA UINMAD+2
+        LDA #$E7
+        STA UINMAD+3
+        LDA #$D7
+        STA UINMAD+4
         CLD            ; Original start code
         LDA LOCNUM     ; Start at preloaded loc.
         RTS
+
+; These zero page locations are overwritten
+;    by the scoring program.
+MOVMSH = UINMAD+1
+BCDLSH = UINMAD+2
+BCDMSH = UINMAD+3
+OBCELR = UINMAD+4
 
 include "Scoring.asm"
 
