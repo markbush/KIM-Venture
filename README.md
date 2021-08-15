@@ -18,8 +18,8 @@ Note that the scoring program overwrites some page zero locations.  If you want 
 
 Included here are:
 
-* The [Instructions](KIM-Venture Game Instructions.pdf) for playing the game.
-* The [Game Manual](KIM-Venture Manual.pdf) containing information about how to load and run the game.
+* The [Instructions](https://github.com/markbush/KIM-Venture/blob/master/KIM-Venture Game Instructions.pdf) for playing the game.
+* The [Game Manual](https://github.com/markbush/KIM-Venture/blob/master/KIM-Venture Manual.pdf) containing information about how to load and run the game.
 
 ## Source Code
 
