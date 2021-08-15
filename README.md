@@ -35,7 +35,7 @@ Game.asm | The actual game which loads into pages 1, 2, and 3
 Extra.asm | Some support subroutines which load into the 6530 RAM
 Scoring.asm | The scoring program
 
-These source files (except `ZeroPage.asm`) are location agnostic.  This allows them to be recompiled into alternate addresses.  I have done this in order to create a combined binary allowing all parts (including scoring) to be loaded at the same time in a KIM with extended memory (or the KIM-1 clone).
+These source files (except `ZeroPage.asm`) are location agnostic.  This allows them to be recompiled into alternate addresses.
 
 The above code can be compiled using the following files:
 
@@ -45,5 +45,8 @@ Venture-ZeroPage.asm | Combines LIGHT with the zero page data
 Venture-Game.asm | Creates the actual game
 Venture-Extra.asm | Creates the file loaded into 6530 RAM
 Venture-Scoring.asm | Creates the scoring program
+Venture-Full.asm | Creates a combimed program for a KIM with extended memory (or the KIM-1 clone)
 
 These files are necessary as the individual source files refer to locations and subroutines located in the other parts.  They can only be assembled together.  Each of the above files contains a directive causing only the relavent part to be output, enabling the separate program files to be created.
+
+For the `Venture-Full` version, the game starts at `$0200` instead of `$0100` and avoids using any locations in page 1 (the 6502 stack).  You can stop the program to view your score at any time.  Press `ST` to stop the program and change to address `$0600` and `GO`.  Press `ST` again and rejoin the game from `$0200`.

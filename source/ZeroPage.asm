@@ -43,23 +43,25 @@ MBCODE: .BYTE $00 ;  1D     Variable (? or magic
 ;
 ; Program variables (except for a very few
 ;      located elsewhere)
-NMBUTS: .BYTE $00 ; No. of magic button uses
-BURDEN: .BYTE $00 ; Bit #n set if carrying object #n.
-DLOBAD: .BYTE $00 ; Abs address of obj to be deleted.
-DRAGON: .BYTE $FF ; FF=hungry; 0=dead; 1=full.
-EGOLAD: .BYTE $EC ; Current address of EGO file.
-LOCAD:  .BYTE $00 ; Addr of current location file.
-LINTAX: .BYTE $00 ; Pointer: 0=EGOLAD; 1=LOCAD
-LOBJAD: .BYTE $00 ; Addr of last obj in file, or
-                 ;      of object of interest.
-LOCNUM: .BYTE $0B ; Number of current location.
-MBUT:   .BYTE $FF ; Current magic button (0 - F valid).
-NOBCRY: .BYTE $00 ; No. of objects carried (0 - 4).
-NOBS:   .BYTE $00 ; No. of objs to be displayed (0 - 7).
-OBJ:    .BYTE $00 ; Object identifier (0 - 7).
-POINTR: .BYTE $00 ; ADL of message
-        .BYTE $03 ; ADH of message (Constant!)
-MOVES:  .BYTE $00 ; L.S. Half of number of moves.
+NMBUTS: .BYTE $00    ; No. of magic button uses
+BURDEN: .BYTE $00    ; Bit #n set if carrying object #n.
+DLOBAD: .BYTE $00    ; Abs address of obj to be deleted.
+DRAGON: .BYTE $FF    ; FF=hungry; 0=dead; 1=full.
+EGOLAD: .BYTE $EC    ; Current address of EGO file.
+LOCAD:  .BYTE $00    ; Addr of current location file.
+LINTAX: .BYTE $00    ; Pointer: 0=EGOLAD; 1=LOCAD
+LOBJAD: .BYTE $00    ; Addr of last obj in file, or
+                     ;      of object of interest.
+LOCNUM: .BYTE $0B    ; Number of current location.
+MBUT:   .BYTE $FF    ; Current magic button (0 - F valid).
+NOBCRY: .BYTE $00    ; No. of objects carried (0 - 4).
+NOBS:   .BYTE $00    ; No. of objs to be displayed (0 - 7).
+OBJ:    .BYTE $00    ; Object identifier (0 - 7).
+POINTR: .BYTE $00    ; ADL of message
+        .BYTE >SOM   ; ADH of message (Constant!)
+                     ; Changed from original to allow
+                     ;    relocation of messages.
+MOVES:  .BYTE $00    ; L.S. Half of number of moves.
 ;
 ; Program constants
 ;

@@ -1,3 +1,12 @@
+              ; Start locations for page 1 and page 2
+              ; to avoid use of top of stack.
+              ; Page 2 must be a page boundary to ensure
+              ; messages in following page are read correctly
+
+              PART1 = $0100
+              PART2 = $0200
+              PART3 = $1780
+
               RAM     = $0000
 0000        .OUTPUT RAM,ENDPRG
               ** = RAM
@@ -77,23 +86,25 @@
               ;
               ; Program variables (except for a very few
               ;      located elsewhere)
-003D 00       NMBUTS: .BYTE $00 ; No. of magic button uses
-003E 00       BURDEN: .BYTE $00 ; Bit #n set if carrying object #n.
-003F 00       DLOBAD: .BYTE $00 ; Abs address of obj to be deleted.
-0040 FF       DRAGON: .BYTE $FF ; FF=hungry; 0=dead; 1=full.
-0041 EC       EGOLAD: .BYTE $EC ; Current address of EGO file.
-0042 00       LOCAD:  .BYTE $00 ; Addr of current location file.
-0043 00       LINTAX: .BYTE $00 ; Pointer: 0=EGOLAD; 1=LOCAD
-0044 00       LOBJAD: .BYTE $00 ; Addr of last obj in file, or
-                               ;      of object of interest.
-0045 0B       LOCNUM: .BYTE $0B ; Number of current location.
-0046 FF       MBUT:   .BYTE $FF ; Current magic button (0 - F valid).
-0047 00       NOBCRY: .BYTE $00 ; No. of objects carried (0 - 4).
-0048 00       NOBS:   .BYTE $00 ; No. of objs to be displayed (0 - 7).
-0049 00       OBJ:    .BYTE $00 ; Object identifier (0 - 7).
-004A 00       POINTR: .BYTE $00 ; ADL of message
-004B 03               .BYTE $03 ; ADH of message (Constant!)
-004C 00       MOVES:  .BYTE $00 ; L.S. Half of number of moves.
+003D 00       NMBUTS: .BYTE $00    ; No. of magic button uses
+003E 00       BURDEN: .BYTE $00    ; Bit #n set if carrying object #n.
+003F 00       DLOBAD: .BYTE $00    ; Abs address of obj to be deleted.
+0040 FF       DRAGON: .BYTE $FF    ; FF=hungry; 0=dead; 1=full.
+0041 EC       EGOLAD: .BYTE $EC    ; Current address of EGO file.
+0042 00       LOCAD:  .BYTE $00    ; Addr of current location file.
+0043 00       LINTAX: .BYTE $00    ; Pointer: 0=EGOLAD; 1=LOCAD
+0044 00       LOBJAD: .BYTE $00    ; Addr of last obj in file, or
+                                   ;      of object of interest.
+0045 0B       LOCNUM: .BYTE $0B    ; Number of current location.
+0046 FF       MBUT:   .BYTE $FF    ; Current magic button (0 - F valid).
+0047 00       NOBCRY: .BYTE $00    ; No. of objects carried (0 - 4).
+0048 00       NOBS:   .BYTE $00    ; No. of objs to be displayed (0 - 7).
+0049 00       OBJ:    .BYTE $00    ; Object identifier (0 - 7).
+004A 00       POINTR: .BYTE $00    ; ADL of message
+004B 03               .BYTE >SOM   ; ADH of message (Constant!)
+                                   ; Changed from original to allow
+                                   ;    relocation of messages.
+004C 00       MOVES:  .BYTE $00    ; L.S. Half of number of moves.
               ;
               ; Program constants
               ;
@@ -361,29 +372,650 @@
                                 ;     message (POINTR) and start over.
 
               ENDPRG = EOCM
+
+              ; START segment.  Begin here using keys
+              ;       AD , 0100,  GO .
+              ;
+              ** = PART1
+0100 D8       START:  CLD            ; PROGRAM START POINT.
+0101 A5 45            LDA LOCNUM     ; Start at preloaded loc.
+              ;
+              ; NEWLOC segment.  Program comes here any
+              ;      time a location is entered.
+              ;
+0103 85 45    NEWLOC: STA LOCNUM     ; New location entry.
+0105 A2 7B            LDX #SOCM-2    ; Start-of-cave-map is
+                                     ;    used as starting
+                                     ;    point for file search.
+0107 E8       CKLNUM: INX
+0108 E8       CKLNLP: INX
+0109 B5 00            LDA 0,X        ; Is this a start-of file?
+010B 10 FB            BPL CKLNLP     ; No. Keep looking.
+010D 86 42            STX LOCAD      ; Yes, save file address,
+010F 29 1F            AND #$1F       ;    and see if it's the
+0111 C5 45            CMP LOCNUM     ;    one he moved to ...
+0113 D0 F2            BNE CKLNUM     ; No.  Look for next file.
+0115 09 A0            ORA #$A0       ; Yes. Indicate "visiting
+0117 95 00            STA 0,X        ;    here" for scoring.
+0119 B4 01            LDY 1,X        ; Get "Directions" word.
+011B 29 01            AND #1         ; Set X-reg for "IN" if
+011D AA               TAX            ;    LOCNUM even; else "AT".
+011E 84 3B            STY SGNPST     ; Signpost = "Directions".
+0120 B4 5F            LDY UINMAD,X   ; Show "You are in"
+0122 20 B3 02         JSR FILMSG     ;    or "You are at".
+0125 A6 45            LDX LOCNUM
+0127 B4 65            LDY LNAMAD,X
+0129 20 B3 02         JSR FILMSG     ; Show location name.
+012C A6 45            LDX LOCNUM
+012E CA               DEX            ; At Purple Oracle?
+012F D0 12            BNE MVTOBH     ; No, move to obj-handler.
+0131 AD 06 17         LDA TIMER      ; Yes, so pick
+0134 29 0F            AND #$F        ;    a random magic button.
+0136 AA               TAX
+0137 85 46            STA MBUT       ; Save the button
+0139 BD E7 1F         LDA DIGCOD,X   ;    and the display-code
+013C 85 3C            STA MBCODE     ;   (from monitor) for it.
+013E A0 8F            LDY #<ASSMAD    ; Show "A Sign Says
+0140 20 B3 02         JSR FILMSG     ;    Magic Button Is *"
+0143 A9 0B    MVTOBH: LDA #$B        ; Set up for "I See" in
+0145 4C 00 02 OBHLNK: JMP OBHNDL     ;    Object-Handler.
+              ; MNMVLP (Main Move Loop).  Program comes here
+              ;      after each move and stays here till next.
+              ;
+0148 A6 41    MNMVLP: LDX EGOLAD     ; Enter here after each move.
+014A E6 4C            INC MOVES      ; Move count.  Overflow?
+014C D0 02            BNE MNLOOP     ; No.
+014E F6 01            INC 1,X        ; Bump MSH of MOVES.
+0150 A0 FC    MNLOOP: LDY #<CUEMAD    ; Loop here till he moves.
+0152 20 B3 02         JSR FILMSG     ; Show "?", Signpost.
+0155 C9 06            CMP #6         ; Key = 0 - 5? (Dir?)
+0157 B0 03            BCS MNLCON
+0159 4C A5 17         JMP SPROC      ; Yes. Do Special Proc.
+015C C9 0B    MNLCON: CMP #$B        ; Key = 6 - A? (No-op?)
+015E 90 E8            BCC MNMVLP     ; Yes. Count as a move.
+0160 F0 9E    STLINK: BEQ START      ; Key = B.  To Browse, act
+                                     ;     as if just moved here.
+0162 C9 0F            CMP #$F        ; Key = C,D, or E?
+0164 90 DF            BCC OBHLNK     ; Yes. Handle objects. (Go
+                                     ;     via NEWLOC.)
+0166 D0 E8            BNE MNLOOP     ; If key is none of the
+                                     ;     above, and not F,
+                                     ;     do nothing.
+                      ; F key has been hit.  Magic Processing.
+0168 A9 53            LDA #$53        ; Insert "?" to ask what
+016A 85 3C            STA MBCODE     ;     Magic Button is.
+016C A0 9E            LDY #<MBIMAD
+016E 20 B3 02         JSR FILMSG     ; Ask the question.
+0171 A0 E1            LDY #$E1       ; TODO: Coded as #CUEMAD
+0173 C5 46            CMP MBUT       ; Did he hit the right one?
+0175 D0 D1            BNE MNMVLP     ; No. Count as a move.
+0177 A9 03            LDA #3         ; Yes, so magic might work.
+0179 A6 45            LDX LOCNUM     ; In the Cellar?
+017B F0 2A            BEQ NEWLNK     ; Yes. To Stone Steps now.
+017D A9 00            LDA #0         ; Is location number
+017F E0 05            CPX #5         ;    higher than 4?
+0181 B0 3B            BCS NOJMSG     ; Yes. Spell won't work.
+0183 CA               DEX            ; At Purple Oracle?
+0184 F0 DA            BEQ STLINK     ; Yes. Spell not only won't
+                                     ; work, it changes!
+0186 E6 3D            INC NMBUTS     ; OK.  At Stone Steps, Red
+                                     ;     Room, or Blue Den.
+                                     ;     Bump M.B. count, and
+0188 EA               NOP            ; Original used absolute
+                                     ;    addressing for previous
+                                     ;    INC but ZP available.
+                                     ;    Use NOP to match addresses.
+0189 D0 1C            BNE NEWLNK     ;     go to Cellar (via
+                                     ;     MOVER).
+              ;
+              ; MOVER   Provesses direction commands (if you
+              ;      made it through SPROC).
+              ;
+018B A6 42    MOVER:  LDX LOCAD      ; Address current file,
+018D B5 01            LDA 1,X        ;    pick up "Directions",
+018F A0 FF            LDY #$FF       ;    and init check count.
+0191 C8       CKNDIR: INY
+0192 4A               LSR            ; This direction OK?
+0193 90 05            BCC CKDLP      ; No.  See if done.
+0195 E8               INX            ; Yes. Bump pointer, and
+0196 C4 F7            CPY DIR        ;    see if this is the
+                                     ;    desired direction.
+0198 F0 09            BEQ DIROK      ; It is.  Go do it.
+019A C0 05    CKDLP:  CPY #5         ; Isn't. Tried all dir's?
+019C D0 F3            BNE CKNDIR     ;        No, keep on...
+019E A0 F7            LDY #<CNTMAD    ; Show "Cannot" and
+01A0 4C 22 02 MVMSML: JMP MSGAML     ;    return to main loop.
+                      ;
+01A3 B5 01    DIROK:  LDA 1,X        ; Pick up new location
+01A5 29 1F            AND #$1F       ;    number, get LS 5
+                                     ;    bits for LOCNUM, and
+01A7 4C 03 01 NEWLNK: JMP NEWLOC     ; Go to new location.
+              ;
+              ; OBUSE (Object Use, or Employment)
+              ;
+01AA A4 49    OBUSE:  LDY OBJ
+01AC A5 45            LDA LOCNUM
+01AE 88               DEY            ; Is object Bird?
+01AF F0 11            BEQ OBUBRD     ; Yes.  Go use it.
+01B1 88               DEY            ; Is object Rope?
+01B2 F0 21            BEQ OBUROP     ; Yes.  Go use it.
+01B4 A2 07            LDX #GULLY
+01B6 88               DEY            ; Is object Rod?
+01B7 F0 24            BEQ OFLROD     ; Yes.  Go to File/Rod use.
+01B9 A2 05            LDX #STGRAT
+01BB 88               DEY            ; Is object File?
+01BC F0 1F            BEQ OFLROD     ; Yes.  Go to File/Rod use.
+01BE A0 85    NOJMSG: LDY #<NOJMAD    ; Show
+01C0 D0 DE            BNE MVMSML     ;   "No Joy" (via MOVER).
+              ;
+01C2 C9 08    OBUBRD: CMP #RYHALL    ; Use Bird at Royal Hall?
+01C4 D0 F8            BNE NOJMSG     ; No -- nothing happens.
+01C6 A5 40            LDA DRAGON     ; Yes.  Dragon hungry?
+01C8 F0 F4            BEQ NOJMSG     ; No, dead.  No effect.
+01CA C8               INY            ; Yes! "Using" Bird is
+01CB 84 40            STY DRAGON     ;    Like "feeding him to
+01CD A0 BD            LDY #<ADDGMS    ;    Dragon!" Show
+01CF 20 B3 02         JSR FILMSG     ;   "Dragon Eats Bird".
+01D2 4C 7F 02         JMP OBDELE     ; Go delete Bird.
+              ;
+01D5 C9 06    OBUROP: CMP #HOLE      ; Used Rope in Hole?
+01D7 D0 E5            BNE NOJMSG     ; No.  No effect.
+01D9 A9 0D            LDA #NPIT      ; Yes, so got out to
+01DB 10 CA            BPL NEWLNK     ;    N. Pit (via MOVER).
+              ;
+01DD E4 45    OFLROD: CPX LOCNUM     ; Used File at Grate or
+                                     ;     Rod at Gully?
+01DF D0 DD            BNE NOJMSG     ; No.  No effect.
+01E1 B5 4F            LDA ADOPGR-5,X ; Yes.  Is Grate open or
+01E3 D5 65            CMP LNAMAD,X   ;   is Bridge made?
+01E5 F0 D7            BEQ NOJMSG     ; Yes. No effect.
+01E7 95 65            STA LNAMAD,X   ; No.  Open Grate or
+                                     ;   make the Bridge.
+01E9 8A               TXA            ; Show the new state
+01EA 10 BB            BPL NEWLNK     ;    of this location.
+              ;
+              ;
+              ; DELOBJ (Delete Object) Sunroutine.
+              ;      Call with DLOBAD = page zero address
+              ;      of the object to be deleted from file.
+              ;
+01EC A6 3F    DELOBJ: LDX DLOBAD     ; Point to obj to delete.
+01EE B5 01    DOBLP:  LDA 1,X        ; Move all files down
+01F0 95 00            STA 0,X        ;    one location until
+01F2 E8               INX            ;    obj is overwritten.
+01F3 E0 EF            CPX #EOCM+1    ; Done yet?
+01F5 D0 F7            BNE DOBLP      ; No, continue.
+01F7 60               RTS            ; Yes, return.
+              ;
+              ;
+              ; OBHNDL (Object-Handler) segment.  Entered
+              ;      with A-reg filled with either of key-
+              ;      depressions B,C,D, or E.  (Arrival at
+              ;      a location looks like a B-keyin.)
+              ;      B=Browse. Produces list of objects,
+              ;         with no action allowed.
+              ;      C,D,E = Carry, Drop, Employ.  Each
+              ;         produces object list, but during
+              ;         list, any key causes action on
+              ;         object currently displayed.
+              ;
+              ** = PART2
+0200 38       OBHNDL: SEC            ; Change B,C,D, or E to
+0201 E9 0D            SBC #$D        ;    -2,-1,0, or 1.
+0203 AA               TAX
+0204 4A               LSR            ; Set up Y-reg for LOBSCH:
+0205 29 01            AND #1         ;    Y=1 (current loc)-B,C.
+0207 A8               TAY            ;    Y=0 (EGO file)-D,E.
+0208 49 01            EOR #1         ; Flip state to get "loc-
+020A 85 43            STA LINTAX     ;    of-interest-adr-index".
+020C E8               INX            ; Change B,C,D, or E to
+020D 86 55            STX SCDU       ;    -1,0,1, or 2 for SCDU.
+020F 20 80 17         JSR LOBSCH     ; Get LOBJAD, no. of obj's.
+0212 84 48            STY NOBS       ; Save no. of obj's for loop.
+0214 F0 0F            BEQ MLLINK     ; If nothing here, done!
+                      ;
+                      ; Begin object-handling processing...
+0216 A6 55            LDX SCDU       ; "Carry" command?
+0218 D0 0E            BNE OBHMDS     ; No.  Continue.
+021A A5 47            LDA NOBCRY     ; Yes, but is he already
+021C C9 04            CMP #4         ;    carrying four things?
+021E D0 08            BNE OBHMDS     ; No.  Continue.
+0220 A0 FA    HOWMSG: LDY #<HOWMAD    ; Show "How ? ".
+0222 20 B3 02 MSGAML: JSR FILMSG     ; Display the message.
+0225 4C 48 01 MLLINK: JMP MNMVLP     ; Return to Main Move Loop.
+                      ;
+0228 B4 62    OBHMDS: LDY CYMSAD,X   ; Show "I See-", "Carry-",
+022A 20 B3 02         JSR FILMSG     ;    "Drop-", or "Use - ".
+                      ;
+022D C6 48    OBNEXD: DEC NOBS       ; Showed all obj's yet?
+022F 30 F4            BMI MLLINK     ; Yes.  nothing else to do.
+0231 A4 44            LDY LOBJAD     ; Save addr of this object
+0233 84 3F            STY DLOBAD     ;    in case it's to be
+                                     ;    deleted from the file.
+0235 B6 00            LDX 0,Y        ; Save the
+0237 86 49            STX OBJ        ;    object number.
+0239 B4 57            LDY OBMSAD,X   ; Show the
+023B 20 B3 02         JSR FILMSG     ;    object's name.
+023E A4 55            LDY SCDU       ; Just looking?
+0240 30 04            BMI OBN        ;    Yes, display next one.
+0242 C9 15            CMP #$15       ; Carry/Drop/Use this obj?
+0244 D0 04            BNE OBHXQT     ; Yes.  Execute obj-handle.
+0246 C6 44    OBN:    DEC LOBJAD     ; Point to next object,
+0248 D0 E3            BNE OBNEXD     ;    and show it.
+                      ;
+                      ; Execution of object-handling begins:
+024A 88       OBHXQT: DEY
+024B 30 05            BMI OBCARY     ; Go Carry object.
+024D F0 29            BEQ OBDROP     ; Go Drop object.
+024F 4C AA 01         JMP OBUSE      ; Go Use object.
+                      ;
+                      ; OBCARY (Object-Carrying) segment.
+                      ;
+0252 A0 F7    OBCARY: LDY #<CNTMAD
+0254 A6 49            LDX OBJ
+0256 CA               DEX            ; Is object Bird?
+0257 D0 08            BNE OBCDCK     ; No, see if Dragon.
+0259 A5 3E            LDA BURDEN     ; Yes.  Is he carrying
+025B 29 28            AND #$28       ;    the cage and
+025D C9 20            CMP #$20       ;    not the rod?
+025F D0 BF            BNE HOWMSG     ; No. "How carry Bird?"
+                      ;
+0261 8A       OBCDCK: TXA            ; Is obj Dragon (X=$FF)?
+0262 30 BE            BMI MSGAML     ; Yes.  Show "Cannot".
+                      ;
+                      ; Finally ready to carry the
+                      ;   indicated object...
+0264 E6 47    OBOKCY: INC NOBCRY     ; OK to carry object.
+0266 A5 3E            LDA BURDEN     ;    Bump carry count,
+0268 15 4D            ORA OBJMSK,X   ;    and indicate
+026A 85 3E            STA BURDEN     ;    what's being carried.
+026C 20 90 17         JSR ADDOBJ     ; Add obj to EGO file.
+026F C6 41    OBDELL: DEC EGOLAD     ; Move everything down 1,
+0271 20 EC 01         JSR DELOBJ     ;    and delete object
+                      ;                   from location file.
+                      ;
+0274 A0 4C    DONMSG: LDY #<DONE
+0276 D0 AA            BNE MSGAML     ; Show "Done" message
+                      ;                   and return to
+                      ;                   Main Move Loop.
+                      ;
+                      ;
+                      ; OBDROP (Object-Dropping) segment.
+                      ;
+0278 E6 41    OBDROP: INC EGOLAD     ; Move everything up 1,
+027A 20 90 17         JSR ADDOBJ     ;    and add object to
+027D E6 3F            INC DLOBAD     ;    location file.
+027F C6 47    OBDELE: DEC NOBCRY     ; Delete object from
+0281 A6 49            LDX OBJ        ;    EGO file,
+0283 A5 3E            LDA BURDEN     ;    indicate one less
+0285 38               SEC            ;    object carried,
+0286 F5 4C            SBC OBJMSK-1,X ;    and remove
+0288 85 3E            STA BURDEN     ;    "object-flag" from
+028A 20 EC 01         JSR DELOBJ     ;    Burden list.
+                      ;
+028D A5 40            LDA DRAGON     ; Is Dragon alive&hungry?
+028F 10 E3            BPL DONMSG     ; No.  All done.
+                      ;                TODO: BPL recorded as 1C in hex dump
+0291 A6 49            LDX OBJ        ; Was Bird
+0293 CA               DEX            ;    just dropped?
+0294 D0 DE            BNE DONMSG
+0296 A5 45            LDA LOCNUM     ; Yes, are we
+0298 C9 08            CMP #8         ;    at Royal Hall?
+029A D0 D8            BNE DONMSG
+029C A9 85            LDA #DRAGAD    ; Yes, so Dragon is
+029E 85 3F            STA DLOBAD     ;    scared off.
+02A0 86 40            STX DRAGON
+02A2 A9 05            LDA #5         ; Change msg length
+02A4 8D BD 03         STA ADDGMS     ;    so proper msg
+02A7 A0 BD            LDY #<ADDGMS    ;    is shown, and
+02A9 20 B3 02         JSR FILMSG     ;    go show it.
+02AC F0 C1            BEQ OBDELL     ; Delete Dragon.
+              ; FILMSG (Fill WINDO, display message) Sub-
+              ;      routine.  Unpacks and displays a word
+              ;      or series of words, starting at ADL
+              ;      specified by Y-reg at time of call.
+              ;      Message is in page specified by con-
+              ;      tents of POINTR+1.  Calls LIGHT S/R.
+02AE 18       FLM1:   CLC
+02AF 8A               TXA            ; To display next word,
+02B0 65 4A            ADC POINTR     ;    add DISNXM to POINTR,
+02B2 A8               TAY            ;    place in Y-reg, and
+                      ;                   call S/R again...
+02B3 84 4A    FILMSG: STY POINTR     ; S/R ENTRY POINT *******
+                                          ;  Save msg ADL.
+02B5 A2 00            LDX #0         ; Clear letter-counter.
+02B7 A0 00            LDY #0         ; Clear byte pointer.
+02B9 86 FE            STX DISNXM     ; Clear "continue" flag.
+02BB 86 FD    MFLOOP: STX LCTR       ; Save letter-counter.
+02BD 18               CLC            ; C=0 to address FUTBL.
+02BE B1 4A    MFLAP:  LDA (POINTR),Y ; Get next byte, and
+02C0 48               PHA            ;    save a copy.
+02C1 6A               ROR            ; Shift in CARRY bit,
+02C2 4A               LSR            ;    then move CARRY+MSH
+02C3 4A               LSR            ;    to lower part
+02C4 4A               LSR            ;    of the byte.
+02C5 F0 32            BEQ MSHRPT     ; MSH=0 means LSH is a
+                                     ;    repeat pointer.
+02C7 C9 01            CMP #1         ; MSH=1 means LSH is an
+02C9 F0 34            BEQ IUBYT      ;    index to IUTBL.
+02CB AA               TAX            ; MSH>=2, so use C + MSH
+02CC B5 1F            LDA FUTBL-2,X  ;    to point to char-code.
+                      ;
+02CE A6 FD    STMSH:  LDX LCTR       ; Use letter-counter to
+02D0 95 F0            STA WINDO,X    ;    put code in window.
+02D2 68               PLA            ; Get copy of current byte.
+02D3 E8               INX            ; Increment and
+02D4 86 FD            STX LCTR       ;    save the letter count.
+                                     ; (At this point, FILMSG
+                                     ; could be done, and a
+                                     ; check should be made
+                                     ; for "Done 6?".  To
+                                     ; save 4 bytes, I let it
+                                     ; run till ending on a
+                                     ; byte boundary....RCL)
+02D6 29 0F            AND #$F        ; Extract LSH of the byte.
+02D8 C9 01            CMP #1         ; If =1, next byte is IU
+02DA F0 26            BEQ IUNXWD     ;    letter code.
+                      ;
+02DC AA       STLSH:  TAX            ; Use this byte's LSH as
+02DD B5 1F            LDA FUTBL-2,X  ;    FUTBL pointer.
+02DF A6 FD            LDX LCTR       ; Use letter-counter to
+02E1 95 F0            STA WINDO,X    ;    put code in window.
+02E3 C8               INY            ; Bump both pointers
+02E4 E8               INX
+02E5 E0 06            CPX #6         ; Done yet?
+02E7 90 D2            BCC MFLOOP     ; No.  Continue.
+02E9 A0 C0    DONFIL: LDY #$C0       ; **($02EA)=Display speed**
+              DSPSPD = **-1          ; Save into symbol table.
+02EB 20 00 00 SHMSG:  JSR LIGHT      ; Make several calls to
+02EE 20 00 00         JSR LIGHT      ;    the display/keyboard
+02F1 88               DEY            ;    subroutines.
+02F2 D0 F7            BNE SHMSG
+02F4 A6 FE            LDX DISNXM     ; Display another word?
+02F6 D0 B6            BNE FLM1       ; Yes.  Go do it.
+02F8 60               RTS            ; No.  Return with key (if
+                      ;                   any) in A-reg.  If no
+                      ;                   key hit, A = $15.
+02F9 68       MSHRPT: PLA            ; The current byte is an
+02FA 85 FE            STA DISNXM     ;    offset to next msg.
+02FC C8               INY            ;    Save it, point to
+02FD 10 BC            BPL MFLOOP     ;    next byte, continue.
+                      ;
+02FF 68       IUBYT:  PLA            ; The current byte is an
+0300 10 DA            BPL STLSH      ;    IUTBL pointer. Use it.
+                      ;
+0302 C8       IUNXWD: INY            ; Point to next byte.
+0303 38               SEC            ; C=1 will add 16 to FUTBL
+0304 B0 B8            BCS MFLAP      ;    pointer; thus we have
+                      ;                   an IUTBL pointer.
+              ;
+              ; Message.  Starting at a point in page 3
+              ;      specified by POINTR, the FILMS S/R
+              ;      examines this data a half byte at a
+              ;      time to extract a 6-character message.
+              ;      Each half-byte may be one of the
+              ;      following:
+              ;  0, meaning "Save the next half-byte. When
+              ;      the current display is done, use that value to advance POINTR, and go through
+              ;      FILMSG again for a new display."
+              ;  1, meaning "Use the value of the next
+              ;      half-byte as a pointer into IUTBL."
+              ;  2 - F, meaning "Use this value as a pointer
+              ;      into FUTBL."
+              ;      (See IUTBL and FUTBL at $002F, $0021.)
+              ; (Key to character-codes is at the end of this table.)
+0306 35 88 2B       SOM:    .BYTE $35,$88,$2B                     ; CELLAR  CE LL AR
+0309 05 16 EB 16 85 AB 23 85               .BYTE $05,$16,$EB,$16,$85,$AB,$23,$85 ; PURPLO  #5 Px UR Px LE OR AC LE
+0311 03 FB 54 FF BA A1 5F               .BYTE $03,$FB,$54,$FF,$BA,$A1,$5F     ; REDRM   #3  R ED    RO OM x*
+0318 07 CD A9 5F               .BYTE $07,$CD,$A9,$5F                 ; STSTPS  #7 ST ON E
+031C 16 52 B8               .BYTE $16,$52,$B8                     ; PEARLS  Px EA RL
+031F CD 51 6C               .BYTE $CD,$51,$6C                     ;         ST EP xS
+0322 F3 21 35               .BYTE $F3,$21,$35                     ; CAGE     C AG xE
+0325 F1 27 85               .BYTE $F1,$27,$85                     ; FILE     F xI LE
+0328 F3 6E D5               .BYTE $F3,$6E,$D5                     ; CHUTE    C HU TE
+032B 05 11 B7 41 35               .BYTE $05,$11,$B7,$41,$35             ; BRAGM   #5 Bx RI DG xE
+0330 08 23 BA CC               .BYTE $08,$23,$BA,$CC                 ;         #8 AC RO SS
+0334 0C FA 16 59               .BYTE $0C,$FA,$16,$59                 ; OPNGRM  #C  O Px EN
+0338 F1 3E 88 18               .BYTE $F1,$3E,$88,$18                 ; GULLY    G xU LL Yx
+033C 04 CD 55 8F               .BYTE $04,$CD,$55,$8F                 ; STGRAT  #4 ST EE L
+0340 13 B2 D5               .BYTE $13,$B2,$D5                     ;         Gx RA TE
+0343 FB A1 65               .BYTE $FB,$A1,$65                     ; ROPE     R OP xE
+0346 F1 3A 84               .BYTE $F1,$3A,$84                     ; GOLD     G xO LD
+0349 F3 21 35               .BYTE $F3,$21,$35                     ; CAGE     C AG xE
+034C F4 A9 5F       DONE:   .BYTE $F4,$A9,$5F                     ; DONMAD   D ON E
+034F 2F 6A 85               .BYTE $2F,$6A,$85                     ; HOLE    A  HO LE
+0352 07 FD 71 36               .BYTE $07,$FD,$71,$36                 ; TSHAFT  #7  T IG xH
+0356 DE 99 58               .BYTE $DE,$99,$58                     ; TUNNEL  TU NN EL
+0359 FC 62 12 DF               .BYTE $FC,$62,$12,$DF                 ;          S HA Fx T*
+035D 05 1B 10 79 36               .BYTE $05,$1B,$10,$79,$36             ; SLIT    #5 2x -x IN CH
+0362 04 FC 87 DF               .BYTE $04,$FC,$87,$DF                 ;         #4  S LI T
+0366 09 79 FD 65               .BYTE $09,$79,$FD,$65                 ;         #9 IN  T HE
+036A 0D A1 8C D5 BF               .BYTE $0D,$A1,$8C,$D5,$BF             ; OYSTRB  #D OY xS TE R*
+036F 08               .BYTE $08                             ;         #08
+0370 CD B5 21               .BYTE $CD,$B5,$21                     ; STREAM  ST RE AM
+0373 51 AF 16 7D               .BYTE $51,$AF,$16,$7D                 ; EPIT    E. x  Px IT
+0377 F1 01 15 4F               .BYTE $F1,$01,$15,$4F                 ;          - xB xE D
+037B 04 BA 18 28 F6 28 8F               .BYTE $04,$BA,$18,$28,$F6,$28,$8F     ; RYHALL  #4 RO Yx AL  H AL L
+0382 2F 13 85               .BYTE $2F,$13,$85                     ; GLEN    A  Gx LE
+0385 9A F1 4A 18       NOJMAD: .BYTE $9A,$F1,$4A,$18                 ; NOJOY   NO  J xO Yx
+0389 EF BF 2D               .BYTE $EF,$BF,$2D                     ; URAT    U  R  AT
+038C EF BF 79               .BYTE $EF,$BF,$79                     ; URIN    U  R  IN
+038F 08 2F C7 13       ASSMAD: .BYTE $08,$2F,$C7,$13                 ; ASSMAD  #8 A  SI Gx
+0393 91 AF 16 7D               .BYTE $91,$AF,$16,$7D                 ; NPIT    N. x  Px IT
+0397 07 FC 21 8C               .BYTE $07,$FC,$21,$8C                 ;         #7  S AY xS
+039B F2 DD 73               .BYTE $F2,$DD,$73                     ; ATTIC    A TT IC
+039E 05 15 21 37 3F       MBIMAD: .BYTE $05,$15,$21,$37,$3F             ; MBISAD  #5 Mx AG xI C
+03A3 05 11 ED DA 9F               .BYTE $05,$11,$ED,$DA,$9F             ;         #5 Bx UT TO N*
+03A8 F7 CF 1D               .BYTE $F7,$CF,$1D                     ;          I S  @x
+03AB F6 AE C5               .BYTE $F6,$AE,$C5                     ; HOUSE    H OU SE
+03AE FE C5 F1               .BYTE $FE,$C5,$F1                     ; USE      U SE  -
+03B1 07 62 8D 54       HBDMS:  .BYTE $07,$62,$8D,$54                 ; HBDRGN  #7 HA LT ED
+03B5 7F C5 51               .BYTE $7F,$C5,$51                     ; ISEE    I  SE E-
+03B8 06 11 18 FD 65               .BYTE $06,$11,$18,$FD,$65             ;         Bx Yx  T HE
+03BD 0E       ADDGMS: .BYTE $0E                             ; ADDGMS  #E (Change to #5 for
+                                                            ;            Scared Out...)
+03BE 4B 21 3A 9F               .BYTE $4B,$21,$3A,$9F                 ; ADDRAG  DR AG xO N*
+03C2 04 C3 2B 54               .BYTE $04,$C3,$2B,$54                 ;         #4 SC AR ED
+03C6 09 AE DF 11 18               .BYTE $09,$AE,$DF,$11,$18             ;         #9 OU T  Bx Yx
+03CB 04 F5 2D CF               .BYTE $04,$F5,$2D,$CF                 ;         #4  E AT S
+03CF 0D 87 DD 85               .BYTE $0D,$87,$DD,$85                 ;         #D LI TT LE
+03D3 0F F1 18 E5               .BYTE $0F,$F1,$18,$E5                 ; BLUDEN  #F  B xL UE
+03D7 F4 BA 16 10               .BYTE $F4,$BA,$16,$10                 ; DROP     D RO Px -x
+03DB 04               .BYTE $04                             ; BIRDRM  #4
+03DC F1 17 B4               .BYTE $F1,$17,$B4                     ; BIRD     B xI RD
+03DF FB AA 15               .BYTE $FB,$AA,$15                     ;          R OO Mx
+03E2 F4 59               .BYTE $F4,$59                         ;          D EN
+03E4 FF BA 4F               .BYTE $FF,$BA,$4F                     ; ROD        RO D
+03E7 32 BB 18 10               .BYTE $32,$BB,$18,$10                 ; CARRY   CA RR Yx -x
+03EB C1 AF 16 7D               .BYTE $C1,$AF,$16,$7D                 ; SPIT    S. x  Px IT
+03EF 13 BA DD AF               .BYTE $13,$BA,$DD,$AF                 ; GROTTO  Gx RO TT O*
+03F3 12 AB 5C DF               .BYTE $12,$AB,$5C,$DF                 ; FOREST  Fx OR ES T*
+03F7 32 99 AD       CNTMAD: .BYTE $32,$99,$AD                     ; CNTMAD  CA NN OT
+03FA 6A 17       HOWMAD: .BYTE $6A,$17                         ; HOWMAD  HO Wx
+03FC F1 9F FF 1C       CUEMAD: .BYTE $F1,$9F,$FF,$1C                 ; CUEMAD   ? x     &x
+              ;
+              ; Key to characters used in right-hand column
+              ;      of above table:
+              ;    Letter or space -- the FUTBL 4-bit code
+              ;          for that letter or space.
+              ;
+              ;    Letter, dash, "?", ".", or 2; followed
+              ;    by "x" -- the IUTBL 8-bit code for that
+              ;          character.
+              ;
+              ;    "@x" -- the IUTBL 8-bit code for the
+              ;          character stored in IUTBL (by the
+              ;          NEWLOC and MNMVLP segments) as
+              ;          part of the Magic Button message.
+              ;    "&x" -- the 8-bit code for the Signpost
+              ;          character stored in IUTBL (by the
+              ;          NEWLOC segment) as part of CUE msg.
+              ;
+              ;    #n -- the number, n, of bytes (in hex) to
+              ;          advance POINTR in order to point to
+              ;          the next successive message.
+              ;
+              ;    * -- a "wasted" half-byte
+              ;
+              ; ............................................
+
+              ** = PART3
+
+              ;
+              ; LOBSCH (Last Object Search) subrouting.
+              ;      Finds, and saves in LOBJAD, the address
+              ;      of the last object in a file; also
+              ;      counts, and returns in Y-reg, the number
+              ;      of objects in the file.  File to search
+              ;      is EGO file if called with Y=0; is
+              ;      file at LOCAD if called with Y=1.
+              ;
+1780 B6 41    LOBSCH: LDX EGOLAD,Y   ; Get pointer to file.
+1782 A0 FF            LDY #$FF       ; Init object-count.
+                      ;
+1784 E8       OBFIND: INX
+1785 86 44            STX LOBJAD     ; Save addr of last obj.
+1787 B5 01            LDA 1,X        ; Set up to test bits
+1789 0A               ASL            ;   7 & 6 of each location.
+178A 30 F8            BMI OBFIND     ; b6=1.  Not an object.
+178C C8               INY            ; Bump object-count.
+178D 90 F5            BCC OBFIND     ; b7=0. An object. Continue.
+178F 60               RTS            ; b7=1. End of file. Done.
+              ;
+              ;
+              ;
+              ; ADDOBJ (Add Object) subroutine.  Called to
+              ;      add a dropped object to a location file,
+              ;      or a picked-up object to EGO file.
+              ;      LINTAX is the pointer to the address of
+              ;      the location of interest: 0 for EGO,
+              ;      1 for file specified by LOCAD.  Calls
+              ;      LOBSCH subroutine.  Object to be added
+              ;      is specified by contents of OBJ.
+              ;
+1790 A4 43    ADDOBJ: LDY LINTAX     ; Point to file of interest.
+1792 20 80 17         JSR LOBSCH     ; Find last obj's address.
+1795 A2 EE            LDX #EOCM      ; Start at End of Cave Map.
+1797 B5 00    AOBLP:  LDA 0,X        ; Move all files up one
+1799 95 01            STA 1,X        ;    location to make room
+179B CA               DEX            ;    for the object.
+179C E4 44            CPX LOBJAD     ; Done yet?
+179E D0 F7            BNE AOBLP      ; No.  Keep moving.
+17A0 A5 49            LDA OBJ        ; Yes, store object just
+17A2 95 01            STA 1,X        ;    above last object in
+17A4 60               RTS            ;    the file; return.
+              ;
+              ;
+              ; SPROC (Special Processing) segment.
+              ;      Entered from Main Move Loop (MNMVLP)
+              ;      following a "direction" command, this
+              ;      code takes care of any special pro-
+              ;      hibitions against moving in the com-
+              ;      manded direction. (Examples -- can't
+              ;      go through a steel grate, or past a
+              ;      dragon.)  Possible exits from a SPROC
+              ;      are: to MOVER, if no problems with
+              ;                the command direction,
+              ;           to HOWMSG, if "How ? " is to be
+              ;                shown to indicate improper
+              ;                conditions for the move, or
+              ;           to MSGAML, showing "Halted By
+              ;                The Dragon", if appropriate.
+              ;
+17A5 A8       SPROC:  TAY
+17A6 84 F7            STY DIR        ; Save direction for MOVER.
+17A8 A6 45            LDX LOCNUM
+17AA B5 65            LDA LNAMAD,X   ; If at grate (or gully),
+17AC D5 4F            CMP ADOPGR-5,X ;    is grate open (or is
+                      ;                   bridge made)?
+17AE F0 08            BEQ SPATS      ; Yes, move is OK.
+17B0 E0 05            CPX #[ADGRM-LNAMAD] ; No. At closed
+                      ;                           grate?
+17B2 F0 24            BEQ SPCHKD     ; Yes, disallow Down.
+17B4 E0 07            CPX #[ADGYM-LNAMAD] ; At bridgeless
+                      ;                           gully?
+17B6 F0 22            BEQ SPCHKW     ; Yes, disallow West.
+17B8 E0 0C    SPATS:  CPX #[ADTSM-LNAMAD] ; At shaft?
+17BA D0 04            BNE SPATSS
+17BC A5 47            LDA NOBCRY     ; Yes, carrying anything?
+17BE D0 18            BNE SPCHKD     ; Yes, disallow Down.
+                      ;
+17C0 E0 03    SPATSS: CPX #[ADSSM-LNAMAD] ; At steps?
+17C2 D0 04            BNE SPATRH
+17C4 A5 3E            LDA BURDEN     ; Yes, carrying Gold?
+17C6 30 11            BMI SPCHKU     ; Yes, disallow Up.
+                      ;
+17C8 E0 08    SPATRH: CPX #[ADRHM-LNAMAD] ; At Royal Hall?
+17CA D0 15            BNE SPCONT
+17CC A5 40            LDA DRAGON     ; Yes, is Dragon there?
+17CE F0 11            BEQ SPCONT
+17D0 88               DEY            ; Yes, but going East
+17D1 F0 0E            BEQ SPCONT     ;    is OK.  Continue.
+17D3 A0 B1            LDY #<HBDMS     ; All other directions,
+17D5 4C 22 02         JMP MSGAML     ;    "Halted by Dragon."
+                      ;
+17D8 88       SPCHKD: DEY            ; Check for Down,
+17D9 88       SPCHKU: DEY            ;       for Up, or
+17DA C0 03    SPCHKW: CPY #3         ;       for West.
+17DC D0 03            BNE SPCONT     ; Other directions are OK.
+17DE 4C 20 02         JMP HOWMSG     ; Disallowed direction
+                      ;                   produces "How ? ".
+                      ;
+17E1 4C 8B 01 SPCONT: JMP MOVER      ; Continue Move process.
+                      ;
+                      ;
+                      ;
+                      ;
+              ;  These three bytes
+              ;  are left spare for
+              ;  user expansion....
 ADBRDG   $  56
+ADDGMS   $ 3BD
+ADDOBJ   $1790
 ADGRM    $  6A
 ADGYM    $  6C
 ADOPGR   $  54
 ADRHM    $  6D
 ADSSM    $  68
 ADTSM    $  71
+AOBLP    $1797
+ASSMAD   $ 38F
 BURDEN   $  3E
+CKDLP    $ 19A
+CKLNLP   $ 108
+CKLNUM   $ 107
+CKNDIR   $ 191
+CNTMAD   $ 3F7
 CONVD    $1F48
+CUEMAD   $ 3FC
 CYMSAD   $  62
+DELOBJ   $ 1EC
 DIGCOD   $1FE7
 DIR      $  F7
+DIROK    $ 1A3
 DISNXM   $  FE
 DLOBAD   $  3F
+DOBLP    $ 1EE
+DONE     $ 34C
+DONFIL   $ 2E9
+DONMSG   $ 274
 DRAGAD   $  85
 DRAGON   $  40
+DSPSPD   $ 2EA
 EGOLAD   $  41
 ENDPRG   $  EE
 EOCM     $  EE
+FILMSG   $ 2B3
+FLM1     $ 2AE
 FUTBL    $  21
 GETKEY   $1F6A
 GULLY    $   7
+HBDMS    $ 3B1
 HOLE     $   6
+HOWMAD   $ 3FA
+HOWMSG   $ 220
+IUBYT    $ 2FF
+IUNXWD   $ 302
 IUTBL    $  2F
 KBG      $  18
 KEYS     $1F3D
@@ -393,26 +1025,77 @@ LINTAX   $  43
 LITELP   $   B
 LNAMAD   $  65
 LOBJAD   $  44
+LOBSCH   $1780
 LOCAD    $  42
 LOCNUM   $  45
 MBCODE   $  3C
+MBIMAD   $ 39E
 MBUT     $  46
+MFLAP    $ 2BE
+MFLOOP   $ 2BB
+MLLINK   $ 225
+MNLCON   $ 15C
+MNLOOP   $ 150
+MNMVLP   $ 148
+MOVER    $ 18B
 MOVES    $  4C
+MSGAML   $ 222
+MSHRPT   $ 2F9
+MVMSML   $ 1A0
+MVTOBH   $ 143
+NEWLNK   $ 1A7
+NEWLOC   $ 103
 NMBUTS   $  3D
 NOBCRY   $  47
 NOBS     $  48
+NOJMAD   $ 385
+NOJMSG   $ 1BE
 NPIT     $   D
+OBCARY   $ 252
+OBCDCK   $ 261
+OBDELE   $ 27F
+OBDELL   $ 26F
+OBDROP   $ 278
+OBFIND   $1784
+OBHLNK   $ 145
+OBHMDS   $ 228
+OBHNDL   $ 200
+OBHXQT   $ 24A
 OBJ      $  49
 OBJMSK   $  4D
 OBMSAD   $  57
+OBN      $ 246
+OBNEXD   $ 22D
+OBOKCY   $ 264
+OBUBRD   $ 1C2
+OBUROP   $ 1D5
+OBUSE    $ 1AA
+OFLROD   $ 1DD
 PADD     $1741
+PART1    $ 100
+PART2    $ 200
+PART3    $1780
 POINTR   $  4A
 RAM      $   0
 RYHALL   $   8
 SCDU     $  55
 SGNPST   $  3B
+SHMSG    $ 2EB
 SOCM     $  7D
+SOM      $ 306
+SPATRH   $17C8
+SPATS    $17B8
+SPATSS   $17C0
+SPCHKD   $17D8
+SPCHKU   $17D9
+SPCHKW   $17DA
+SPCONT   $17E1
+SPROC    $17A5
+START    $ 100
 STGRAT   $   5
+STLINK   $ 160
+STLSH    $ 2DC
+STMSH    $ 2CE
 TEMP     $  FC
 TIMER    $1706
 UINMAD   $  5F

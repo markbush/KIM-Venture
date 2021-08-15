@@ -6,6 +6,8 @@
 PART1 = $0100
 PART2 = $0200
 PART3 = $1780
+PART4 = $0100
+PART5 = $0200
 
 include "KIM-Locations.asm"
 
@@ -14,6 +16,11 @@ include "KIM-Locations.asm"
 ** = $0000
 include "Light.asm"
 include "ZeroPage.asm"
+
+; Game needed for references to messages
+** = PART1
+
+include "Game.asm"
 
 RAM     = PART1
 .OUTPUT RAM,ENDPRG

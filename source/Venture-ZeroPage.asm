@@ -1,3 +1,12 @@
+; Start locations for page 1 and page 2
+; to avoid use of top of stack.
+; Page 2 must be a page boundary to ensure
+; messages in following page are read correctly
+
+PART1 = $0100
+PART2 = $0200
+PART3 = $1780
+
 RAM     = $0000
 .OUTPUT RAM,ENDPRG
 ** = RAM
@@ -10,3 +19,9 @@ include "Light.asm"
 include "ZeroPage.asm"
 
 ENDPRG = EOCM
+
+include "Game.asm"
+
+** = PART3
+
+include "Extra.asm"

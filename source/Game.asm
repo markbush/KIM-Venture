@@ -389,7 +389,7 @@ IUNXWD: INY            ; Point to next byte.
 ;      into FUTBL."
 ;      (See IUTBL and FUTBL at $002F, $0021.)
 ; (Key to character-codes is at the end of this table.)
-        .BYTE $35,$88,$2B                     ; CELLAR  CE LL AR
+SOM:    .BYTE $35,$88,$2B                     ; CELLAR  CE LL AR
         .BYTE $05,$16,$EB,$16,$85,$AB,$23,$85 ; PURPLO  #5 Px UR Px LE OR AC LE
         .BYTE $03,$FB,$54,$FF,$BA,$A1,$5F     ; REDRM   #3  R ED    RO OM x*
         .BYTE $07,$CD,$A9,$5F                 ; STSTPS  #7 ST ON E

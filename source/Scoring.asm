@@ -7,7 +7,7 @@
 ;      way down to J, or -- at the bottom --
 ;      Class O), and a count of the moves
 ;      made by the player (up to 9999).
-** = PART1
+** = PART4
 KVSCOR: JMP BGNSCR
 ;
 ; LOCSCH (Location Search) Subroutine.
@@ -20,14 +20,14 @@ LOCSCH: STA LOCNUM     ; Save location number.
         LDX #SOCM-2    ; Start-of-cave-map is
                        ;    used as starting
                        ;    point for file search.
-CKLNUM: INX
-CKLNLP: INX
+CKLNUMS: INX
+CKLNLPS: INX
         LDA 0,X        ; Is this a start-of-file?
-        BPL CKLNLP     ; No.  Keep looking.
+        BPL CKLNLPS    ; No.  Keep looking.
         STX LOCAD      ; Yes, save file address,
         AND #$1F       ;    and see if it's the
         CMP LOCNUM     ;    one we want ...
-        BNE CKLNUM     ; No. Look for next file.
+        BNE CKLNUMS    ; No. Look for next file.
         RTS            ; Yes.  Done, so return.
 ;
 ; VISCHK (Visit Check) Subroutine.  Call with
@@ -167,7 +167,7 @@ PICLNK: JMP PIC        ; Continue cellar check.
 ;      the Pearls are there and are
 ;      testing for Gold.  A-reg has been
 ;      preloaded with Class C.
-** = PART2
+** = PART5
 PIC:    BCC WSLNK      ; Pearls only. Class C.
         LDX #$7C       ; Have placed both
         LDA BCDMSH     ;    treasures in the cellar,
