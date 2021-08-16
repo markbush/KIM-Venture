@@ -985,9 +985,11 @@
 056E 85 62            STA UINMAD+3
 0570 A9 D7            LDA #$D7
 0572 85 63            STA UINMAD+4
-0574 D8               CLD            ; Original start code
-0575 A5 45            LDA LOCNUM     ; Start at preloaded loc.
-0577 60               RTS
+0574 A5 04            LDA >SOM
+0576 85 4B            STA POINTR+1
+0578 D8               CLD            ; Original start code
+0579 A5 45            LDA LOCNUM     ; Start at preloaded loc.
+057B 60               RTS
 
               ; These zero page locations are overwritten
               ;    by the scoring program.

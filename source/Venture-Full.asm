@@ -41,6 +41,8 @@ INITZP: LDA #$89
         STA UINMAD+3
         LDA #$D7
         STA UINMAD+4
+        LDA >SOM
+        STA POINTR+1
         CLD            ; Original start code
         LDA LOCNUM     ; Start at preloaded loc.
         RTS
